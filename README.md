@@ -4,8 +4,8 @@
 The following repo shows how to create redis stream consumer using spring data redis and process it.
 In this simple use case, we are consuming a number which is being added into redis stream (use redis-cli to add element into stream as mentioned down the document), consumer will read the message from the stream, identitfy if is even or odd or error and will add in respective lists or hashes as record. Idea here to show main redis stream concepts like:
   1. Consumer group and processing the message successfully
-  2. Pending messages (if message is not proccessed or acknowledged) (to be implemented)
-  3. Claiming the messages (if any of the consumer goes down permanently or claim the message if consumer does not come up after specified time) (to be implemented)
+  2. Pending messages (if message is not proccessed or acknowledged) 
+  3. Claiming the messages (if any of the consumer goes down permanently or claim the message if consumer does not come up after specified time) 
 
 ## Guidelines
 Before cloning this repository and running it, please keep your redis server up.
