@@ -2,13 +2,13 @@
 
 ## Overview
 The following repo shows how to create redis stream consumer using spring data redis and process it.
-In this simple use case, we are consuming a number which is being added into redis stream (use redis-cli to add element into stream as mentioned down the document), consumer will read the message from the stream, identitfy if is even or odd or error and will add in respective lists and hashes as record. Idea here to show main redis stream concepts like:
+In this simple use case, we are consuming a number which is being added into redis stream (use redis-cli to add element into stream as mentioned down the document), consumer will read the message from the stream, identitfy if is even or odd or error and will add in respective lists or hashes as record. Idea here to show main redis stream concepts like:
   1. Consumer group and processing the message successfully
   2. Pending messages (if message is not proccessed or acknowledged) (to be implemented)
-  3. Claiming the messages (if any of the consumer goes down permanently or claim the message if consumer does not come up after specified time) (to be implmented)
+  3. Claiming the messages (if any of the consumer goes down permanently or claim the message if consumer does not come up after specified time) (to be implemented)
 
 ## Guidelines
-Befor cloning this repository and running it, please keep your redis server up.
+Before cloning this repository and running it, please keep your redis server up.
 
 1. Clone this repository
 2. You can run this application by creating docker image of the application locally.
@@ -82,4 +82,8 @@ docker run -p 8082:8082 -d redis-stream-example
                 this);
    ```
    5. Implementing DisposableBean to override the destroy method to cancel the subscription and stop the message listener container.
+   
+  ## Adding element in redis stream
+  xadd streamname * keyname 10
+  For this usecase , run as : xadd "odd-even-streams" * number 10
    
