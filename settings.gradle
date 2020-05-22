@@ -1,1 +1,3 @@
 rootProject.name = 'kickstart'
+include 'redis-stream-consumer'
+include 'redis-stream-producer'
