@@ -10,7 +10,7 @@ allprojects {
     }
 }
 
-bootJar { mainClassName = 'NONE' }
+bootJar { enabled = false }
 
 subprojects {
     group = 'com.redis-stream'

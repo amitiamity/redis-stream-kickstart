@@ -3,3 +3,6 @@ if(!project.hasProperty("port"))
 bootRun {
     args += ["--server.port=${project.port}"]
 }
+dependencies {
+    implementation project(':redis-stream-common')
+}
