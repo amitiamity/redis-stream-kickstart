@@ -13,17 +13,19 @@ Befor cloning this repository and running it, please keep your redis server up.
 1. Clone this repository
 2. You can run this application by creating docker image of the application locally.
 3. Before creating image, please update the redis host and port in application.properties.
-4. To create the docker image go inside the folder redis-stream-kickstart and run below command
+4. To create the docker image go inside the folder redis-stream-kickstart and run below command:
+docker images to check if images created successfully
 ```docker
 docker build -t redis-stream-example .
 docker images
-docker run -p 8082:8082 -d redis-stream-exampl
+docker run -p 8082:8082 -d redis-stream-example
 ```
 5. Else, open the project and make the gradle build to run the applicaiton
-6. Once the application is started, it would have created the consumer group and stream if it did not exit.
+6. Once the application is started, it would have created the consumer group and stream if it did not exist.
 
 ## Source Code Review
-1. Create the redis connecton using the lettuce connection factory by providing the redis host and port
+1. Create the redis connection using the lettuce connection factory by providing the redis host and port
+  com.redisstream.kickstart.config.RedisConfig.java
 ```java
     @Bean
     public RedisStandaloneConfiguration redisStandaloneConfiguration() {
