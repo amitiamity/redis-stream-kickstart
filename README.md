@@ -83,13 +83,3 @@ docker run -p 8082:8082 -d redis-stream-example
    ```
    5. Implementing DisposableBean to override the destroy method to cancel the subscription and stop the message listener container.
    
-    ```java
-       if (subscription != null) {
-            subscription.cancel();
-        }
-
-        if (listenerContainer != null) {
-            listenerContainer.stop();
-        }
-    ```
-   
