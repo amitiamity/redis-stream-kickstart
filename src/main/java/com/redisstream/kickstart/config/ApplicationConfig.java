@@ -6,6 +6,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.validation.annotation.Validated;
 
+import javax.annotation.PostConstruct;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 @Validated
 @Configuration
 @EnableAutoConfiguration
@@ -21,4 +25,11 @@ class ApplicationConfig {
     private int redisPort;
     private String recordCacheKey;
     private long streamPollTimeout;
+    private String consumerName;
+    private String failureListKey;
+
+    @PostConstruct
+    public void setConsumerName() throws UnknownHostException {
+        consumerName = InetAddress.getLocalHost().getHostName();
+    }
 }

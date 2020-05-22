@@ -22,7 +22,6 @@ import org.springframework.data.redis.stream.Subscription;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Component;
 
-import java.net.InetAddress;
 import java.time.Duration;
 
 @Slf4j
@@ -52,7 +51,7 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
         try {
             String inputNumber = message.getValue().get(NUMBER_KEY);
             final int number = Integer.parseInt(inputNumber);
-            if (isEven(number)) {
+            if (number % 2 == 0) {
                 redisTemplate.opsForList().rightPush(config.getEvenListKey(), inputNumber);
             } else {
                 redisTemplate.opsForList().rightPush(config.getOddListKey(), inputNumber);
@@ -69,16 +68,6 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
 
     }
 
-    /**
-     * return true if a number is even
-     *
-     * @param number
-     * @return
-     */
-    private boolean isEven(int number) {
-        return number % 2 == 0;
-    }
-
     @Override
     public void destroy() throws Exception {
         if (subscription != null) {
@@ -93,7 +82,7 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
     @Override
     public void afterPropertiesSet() throws Exception {
         //name for this consumer which will be registered with consumer group
-        consumerName = InetAddress.getLocalHost().getHostName();
+        consumerName = config.getConsumerName();
         consumerGroupName = config.getConsumerGroupName();
         streamName = config.getOddEvenStream();
 
