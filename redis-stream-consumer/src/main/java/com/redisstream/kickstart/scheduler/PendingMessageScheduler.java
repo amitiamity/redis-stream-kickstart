@@ -19,14 +19,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static com.redisstream.kickstart.constant.Constant.*;
+
 @Slf4j
 @EnableScheduling
 @Component
 public class PendingMessageScheduler {
 
-    private static long MAX_NUMBER_FETCH = 1;
-    private static long MAX_RETRY = 3;
-    private static final String NUMBER_KEY = "number";
     private String consumerName;
     private String streamName;
     private String consumerGroupName;
@@ -99,15 +98,15 @@ public class PendingMessageScheduler {
                 } else {
                     redisTemplate.opsForList().rightPush(config.getOddListKey(), inputNumber);
                 }
-                redisTemplate.opsForHash().put(config.getRecordCacheKey(), "last_result", number);
-                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), "processed", 1);
-                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), "retry_processed", 1);
+                redisTemplate.opsForHash().put(config.getRecordCacheKey(), LAST_RESULT_HASH_KEY, number);
+                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), PROCESSED_HASH_KEY, 1);
+                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), RETRY_PROCESSED_HASH_KEY, 1);
                 redisTemplate.opsForStream().acknowledge(config.getConsumerGroupName(), message);
                 log.info("Message has been processed after retrying");
             } catch (Exception ex) {
                 //log the exception and increment the number of errors count
                 log.error("Failed to process the message: {} ", messagesToProcess.get(0).getValue().get(NUMBER_KEY), ex);
-                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), "errors", 1);
+                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), ERRORS_HASH_KEY, 1);
             }
         }
     }

@@ -1,5 +1,5 @@
 if(!project.hasProperty("port"))
-    project.ext.set("port", 8082)
+    project.ext.set("port", 8081)
 bootRun {
     args += ["--server.port=${project.port}"]
 }

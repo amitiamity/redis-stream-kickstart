@@ -1,6 +1,7 @@
 package com.redisstream.kickstart.consumer;
 
 import com.redisstream.kickstart.config.ApplicationConfig;
+import com.redisstream.kickstart.constant.Constant;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.output.StatusOutput;
@@ -16,6 +17,7 @@ import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.data.redis.stream.Subscription;
@@ -24,13 +26,14 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
+import static com.redisstream.kickstart.constant.Constant.*;
+
 @Slf4j
 @Component
 @EnableScheduling
-public class StreamConsumer implements StreamListener<String, MapRecord<String, String, String>>, InitializingBean,
+public class StreamConsumer implements StreamListener<String, MapRecord<String, Object, Object>>, InitializingBean,
         DisposableBean {
 
-    private static final String NUMBER_KEY = "number";
 
     @Autowired
     ApplicationConfig config;
@@ -38,7 +41,7 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    private StreamMessageListenerContainer<String, MapRecord<String, String, String>> listenerContainer;
+    private StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> listenerContainer;
     private Subscription subscription;
     private String consumerName;
     private String consumerGroupName;
@@ -46,24 +49,24 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
 
 
     @Override
-    public void onMessage(MapRecord<String, String, String> message) {
+    public void onMessage(MapRecord<String, Object, Object> message) {
         //extract the number from the message
         try {
-            String inputNumber = message.getValue().get(NUMBER_KEY);
+            String inputNumber = (String) message.getValue().get(NUMBER_KEY);
             final int number = Integer.parseInt(inputNumber);
             if (number % 2 == 0) {
                 redisTemplate.opsForList().rightPush(config.getEvenListKey(), inputNumber);
             } else {
                 redisTemplate.opsForList().rightPush(config.getOddListKey(), inputNumber);
             }
-            redisTemplate.opsForHash().put(config.getRecordCacheKey(), "last_result", number);
-            redisTemplate.opsForHash().increment(config.getRecordCacheKey(), "processed", 1);
+            redisTemplate.opsForHash().put(config.getRecordCacheKey(), LAST_RESULT_HASH_KEY, number);
+            redisTemplate.opsForHash().increment(config.getRecordCacheKey(), PROCESSED_HASH_KEY, 1);
             redisTemplate.opsForStream().acknowledge(config.getConsumerGroupName(), message);
             log.info("Message has been processed");
         } catch (Exception ex) {
             //log the exception and increment the number of errors count
             log.error("Failed to process the message: {} ", message.getValue().get(NUMBER_KEY), ex);
-            redisTemplate.opsForHash().increment(config.getRecordCacheKey(), "errors", 1);
+            redisTemplate.opsForHash().increment(config.getRecordCacheKey(), ERRORS_HASH_KEY, 1);
         }
 
     }
@@ -91,7 +94,8 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
             // if stream does not exist it will create stream first then create consumer group
             if (!redisTemplate.hasKey(streamName)) {
                 log.info("{} does not exist. Creating stream along with the consumer group", streamName);
-                RedisAsyncCommands commands = (RedisAsyncCommands) redisTemplate.getConnectionFactory().getConnection().getNativeConnection();
+                RedisAsyncCommands commands = (RedisAsyncCommands) redisTemplate.getConnectionFactory()
+                        .getConnection().getNativeConnection();
                 CommandArgs<String, String> args = new CommandArgs<>(StringCodec.UTF8)
                         .add(CommandKeyword.CREATE)
                         .add(streamName)
@@ -109,8 +113,12 @@ public class StreamConsumer implements StreamListener<String, MapRecord<String, 
 
 
         this.listenerContainer = StreamMessageListenerContainer.create(redisTemplate.getConnectionFactory(),
-                StreamMessageListenerContainer.StreamMessageListenerContainerOptions.builder()
-                        .pollTimeout(Duration.ofMillis(config.getStreamPollTimeout())).build());
+                StreamMessageListenerContainer
+                        .StreamMessageListenerContainerOptions.builder()
+                        .hashKeySerializer(new JdkSerializationRedisSerializer())
+                        .hashValueSerializer(new JdkSerializationRedisSerializer())
+                        .pollTimeout(Duration.ofMillis(config.getStreamPollTimeout()))
+                        .build());
 
         this.subscription = listenerContainer.receive(
                 Consumer.from(consumerGroupName, consumerName),

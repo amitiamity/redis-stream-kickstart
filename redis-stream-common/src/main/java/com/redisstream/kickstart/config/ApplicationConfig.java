@@ -9,6 +9,7 @@ import org.springframework.validation.annotation.Validated;
 import javax.annotation.PostConstruct;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.UUID;
 
 @Validated
 @Configuration
@@ -30,6 +31,6 @@ class ApplicationConfig {
 
     @PostConstruct
     public void setConsumerName() throws UnknownHostException {
-        consumerName = InetAddress.getLocalHost().getHostName();
+        consumerName = InetAddress.getLocalHost().getHostName() + UUID.randomUUID();
     }
 }
