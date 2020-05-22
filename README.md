@@ -1,4 +1,4 @@
-# redis-stream-kickstart (Consumer side Example)
+# redis-stream-kickstart (Redis Stream Consumer Example)
 
 ## Overview
 The following repo shows how to create redis stream consumer using spring data redis and process it.
@@ -81,6 +81,15 @@ docker run -p 8082:8082 -d redis-stream-example
                 StreamOffset.create(streamName, ReadOffset.lastConsumed()),
                 this);
    ```
-   5. Implementing DisposableBean
+   5. Implementing DisposableBean to
     override the destroy method to cancel the subscription and stop the message listener container.
+    ```java
+       if (subscription != null) {
+            subscription.cancel();
+        }
+
+        if (listenerContainer != null) {
+            listenerContainer.stop();
+        }
+    ```
    
