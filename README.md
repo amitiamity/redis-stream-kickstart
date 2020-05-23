@@ -1,27 +1,42 @@
-# redis-stream-kickstart (Redis Stream Consumer Example)
+# redis-stream-kickstart
 
 ## Overview
-The following repo shows how to create redis stream consumer using spring data redis and process it.
-In this simple use case, we are consuming a number which is being added into redis stream (use redis-cli to add element into stream as mentioned down the document), consumer will read the message from the stream, identitfy if is even or odd or error and will add in respective lists or hashes as record. Idea here to show main redis stream concepts like:
+The follwoing repo shows how to use redis stream for producing and consuming data using consumer group. There are 3 modules in this project as below :
+1. redis-stream-common
+  This module is a library which has coonfiugration details to connect with redis and common files to be used among other modules.
+2. redis-stream-producer
+  This module is responsible to produce the data using spring data redis libraries.
+3. redis-stream-consumer
+  This module is responsible to consume the data. Identifying the pending messages, claiming and acknowleding them.
+
+## Use Case
+In this use case, we are producing a number through producer and consuming it based on either it is even or odd. We are adding these numbers in odd-list-key, even-list-key and failure-list-key respectively. Main goal to show main redis stream concepts like:
   1. Consumer group and processing the message successfully
   2. Pending messages (if message is not proccessed or acknowledged) 
-  3. Claiming the messages (if any of the consumer goes down permanently or claim the message if consumer does not come up after specified time) 
+  3. Claiming the messages (if any of the consumer goes down permanently or if the message is not processed does not until specified time) 
 
 ## Guidelines
-Before cloning this repository and running it, please keep your redis server up.
+Before cloning this repository and running it, please keep your redis server up. We can use gradle plugin to run the boot application.
 
 1. Clone this repository
-2. You can run this application by creating docker image of the application locally.
-3. Before creating image, please update the redis host and port in application.properties.
-4. To create the docker image go inside the folder redis-stream-kickstart and run below command:
-docker images to check if images created successfully
-```docker
-docker build -t redis-stream-example .
-docker images
-docker run -p 8082:8082 -d redis-stream-example
-```
-5. Else, open the project and make the gradle build to run the applicaiton
-6. Once the application is started, it would have created the consumer group and stream if it did not exist.
+2. Build the project by running the below command
+  ```gradle
+    gradlew clean build
+  ```
+3. Run the producer application
+  ```gradle
+    gradlew :redis-stream-producer:bootRun
+  ```
+  By default this will run on port 8083 (mentioned in it's build.gradle). Also you can run on different port by running below gradle command
+  ```gradle
+     gradlew :redis-stream-producer:bootRun -Pport=[your choice]
+  ```
+  Producer will start the adding the data into stream.
+4. Now you can run the multiple instances of the consumer appliation by using below gradle command
+  ```gradle
+    gradlew :redis-stream-consumer:bootRun -Pport=[your choice]
+  ```
+  You will observe consumer has started processing the message. There is a scheduler job running inside consumer application which will keep looking for any pending message to process it.
 
 ## Source Code Review
 1. Create the redis connection using the lettuce connection factory by providing the redis host and port
@@ -45,13 +60,29 @@ docker run -p 8082:8082 -d redis-stream-example
         redisTemplate.setConnectionFactory(redisConnectionFactory);
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(new StringRedisSerializer());
-        redisTemplate.setHashValueSerializer(new Jackson2JsonRedisSerializer<>(String.class));
-        redisTemplate.setHashKeySerializer(new Jackson2JsonRedisSerializer<>(Integer.class));
         redisTemplate.afterPropertiesSet();
         return redisTemplate;
     }
 ```
-3. Creating stream consumer class
+3. Creating the producer to add the data into stream
+  Class : com.redisstream.kickstart.producer.StreamProducer.produceNumbers()
+```java
+     Random random = new Random();
+        while (true) {
+            int number = random.nextInt(2000);
+            Map<String, String> fields = new HashMap<>();
+            fields.put(Constant.NUMBER_KEY, String.valueOf(number));
+            StringRecord record = StreamRecords.string(fields).withStreamKey(config.getOddEvenStream());
+            redisTemplate.opsForStream().add(record);
+            log.info("Message has been published : {}", number);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                log.error("Thread error:", e);
+            }
+        }
+```
+4. Creating stream consumer class
   Class : com.redisstream.kickstart.consumer.StreamConsumer.java
   1. We need to implement the StreamListener<K, V extends Record<K, ?>> interface of the spring data redis and override the onMessage
   2. We have implemented the InitializingBean to set afterPropertiesSet(). 
@@ -69,9 +100,13 @@ docker run -p 8082:8082 -d redis-stream-example
      Corresponding redis-cli command is : XGROUP CREATE newstream mygroup 0 MKSTREAM
    3. Adding the StreamMessageListenerContainer
    ```java
-     this.listenerContainer = StreamMessageListenerContainer.create(redisTemplate.getConnectionFactory(),
-                StreamMessageListenerContainer.StreamMessageListenerContainerOptions.builder()
-                        .pollTimeout(Duration.ofMillis(config.getStreamPollTimeout())).build());
+        this.listenerContainer = StreamMessageListenerContainer.create(redisTemplate.getConnectionFactory(),
+                StreamMessageListenerContainer
+                        .StreamMessageListenerContainerOptions.builder()
+                        .hashKeySerializer(new JdkSerializationRedisSerializer())
+                        .hashValueSerializer(new JdkSerializationRedisSerializer())
+                        .pollTimeout(Duration.ofMillis(config.getStreamPollTimeout()))
+                        .build());
    ```
    4. Subcribing the listener
    Here we have mentioned the consumerName (to idetify the consumer uniquely in consumer group) and read strategy to consume data from the last consumed offset.
@@ -82,8 +117,62 @@ docker run -p 8082:8082 -d redis-stream-example
                 this);
    ```
    5. Implementing DisposableBean to override the destroy method to cancel the subscription and stop the message listener container.
-   
-  ## Adding element in redis stream
-  xadd streamname * keyname 10
-  For this usecase , run as : xadd "odd-even-streams" * number 10
+
+5. Creating a scheduler to fetch pending messages and claim it to process it
+   Class : com.redisstream.kickstart.scheduler.PendingMessageScheduler
+   1. Reading the pending messages :
+   ```java
+      PendingMessages messages = redisTemplate.opsForStream().pending(streamName,
+                consumerGroupName, Range.unbounded(), MAX_NUMBER_FETCH);
+   ```4
+   2. Claiming the pending messages
+   ```java
+     for (PendingMessage message : messages) { 
+      RedisAsyncCommands commands = (RedisAsyncCommands) redisTemplate.getConnectionFactory().getConnection().getNativeConnection();
+        CommandArgs<String, String> args = new CommandArgs<>(StringCodec.UTF8)
+                .add(streamName)
+                .add(consumerGroupName)
+                .add(consumerName)
+                .add("20") //idle time , message will only be claimed if it has been idle by 20 ms
+                .add(pendingMessage.getIdAsString());
+        commands.dispatch(CommandType.XCLAIM, new StatusOutput<>(StringCodec.UTF8), args);
+     }
+   ```
+   3. Processing the messages
+   ```java
+     for (PendingMessage message : messages) { 
+      List<MapRecord<String, Object, Object>> messagesToProcess = redisTemplate.opsForStream().range(streamName,
+                Range.closed(pendingMessage.getIdAsString(), pendingMessage.getIdAsString()));
+
+        if (messagesToProcess == null || messagesToProcess.isEmpty()) {
+            log.error("Message is not present. It has been either processed or deleted by some other process : {}",
+                    pendingMessage.getIdAsString());
+        } else if (pendingMessage.getTotalDeliveryCount() > MAX_RETRY) {
+            MapRecord<String, Object, Object> message = messagesToProcess.get(0);
+            redisTemplate.opsForList().rightPush(config.getFailureListKey(), message.getValue().get(NUMBER_KEY));
+            redisTemplate.opsForStream().acknowledge(streamName, consumerGroupName, pendingMessage.getIdAsString());
+            log.info("Message has been added into failure list and acknowledged : {}", pendingMessage.getIdAsString());
+        } else {
+            try {
+                MapRecord<String, Object, Object> message = messagesToProcess.get(0);
+                String inputNumber = (String) message.getValue().get(NUMBER_KEY);
+                final int number = Integer.parseInt(inputNumber);
+                if (number % 2 == 0) {
+                    redisTemplate.opsForList().rightPush(config.getEvenListKey(), inputNumber);
+                } else {
+                    redisTemplate.opsForList().rightPush(config.getOddListKey(), inputNumber);
+                }
+                redisTemplate.opsForHash().put(config.getRecordCacheKey(), LAST_RESULT_HASH_KEY, number);
+                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), PROCESSED_HASH_KEY, 1);
+                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), RETRY_PROCESSED_HASH_KEY, 1);
+                redisTemplate.opsForStream().acknowledge(config.getConsumerGroupName(), message);
+                log.info("Message has been processed after retrying");
+            } catch (Exception ex) {
+                //log the exception and increment the number of errors count
+                log.error("Failed to process the message: {} ", messagesToProcess.get(0).getValue().get(NUMBER_KEY), ex);
+                redisTemplate.opsForHash().increment(config.getRecordCacheKey(), ERRORS_HASH_KEY, 1);
+            }
+        }
+     }
+   ```
    
