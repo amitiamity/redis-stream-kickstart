@@ -124,7 +124,7 @@ Before cloning this repository and running it, please keep your redis server up.
    ```java
       PendingMessages messages = redisTemplate.opsForStream().pending(streamName,
                 consumerGroupName, Range.unbounded(), MAX_NUMBER_FETCH);
-   ```4
+   ```
    2. Claiming the pending messages
    ```java
      for (PendingMessage message : messages) { 
