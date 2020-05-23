@@ -1,18 +1,18 @@
 # redis-stream-kickstart
 
 ## Overview
-The follwoing repo shows how to use redis stream for producing and consuming data using consumer group. There are 3 modules in this project as below :
+The following repo shows how to use redis stream for producing and consuming data using consumer group. There are 3 modules in this project as below :
 1. redis-stream-common : 
-  This module is a library which has coonfiugration details to connect with redis and common files to be used among other modules.
+  This module is a library which has confiugration details to connect with redis and common files to be used among other modules.
 2. redis-stream-producer : 
   This module is responsible to produce the data using spring data redis libraries.
 3. redis-stream-consumer : 
-  This module is responsible to consume the data. Identifying the pending messages, claiming and acknowleding them.
+  This module is responsible to consume the data. Identifying the pending messages, claiming and acknowledging them.
 
 ## Use Case
 In this use case, we are producing a number through producer and consuming it based on either it is even or odd. We are adding these numbers in odd-list-key, even-list-key and failure-list-key respectively. Main goal to show main redis stream concepts like:
   1. Consumer group and processing the message successfully
-  2. Pending messages (if message is not proccessed or acknowledged) 
+  2. Pending messages (if message is not processed or acknowledged) 
   3. Claiming the messages (if any of the consumer goes down permanently or if the message is not processed does not until specified time) 
 
 ## Guidelines
@@ -108,8 +108,8 @@ Before cloning this repository and running it, please keep your redis server up.
                         .pollTimeout(Duration.ofMillis(config.getStreamPollTimeout()))
                         .build());
    ```
-   4. Subcribing the listener
-   Here we have mentioned the consumerName (to idetify the consumer uniquely in consumer group) and read strategy to consume data from the last consumed offset.
+   4. Subscribing the listener
+   Here we have mentioned the consumerName (to identify the consumer uniquely in consumer group) and read strategy to consume data from the last consumed offset.
    ```java
     this.subscription = listenerContainer.receive(
                 Consumer.from(consumerGroupName, consumerName),
