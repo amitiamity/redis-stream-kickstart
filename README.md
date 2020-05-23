@@ -1,7 +1,7 @@
 # redis-stream-kickstart
 
 ## Overview
-The following repo shows how to use redis stream for producing and consuming data using consumer group. There are 3 modules in this project as below :
+The following repo shows how to use redis stream to create a messaging system using java and spring data jpa. There are 3 modules in this project as below :
 1. redis-stream-common : 
   This module is a library which has confiugration details to connect with redis and common files to be used among other modules.
 2. redis-stream-producer : 
