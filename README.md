@@ -11,9 +11,10 @@ The following repo shows how to use redis stream for producing and consuming dat
 
 ## Use Case
 In this use case, we are producing a number through producer and consuming it based on either it is even or odd. We are adding these numbers in odd-list-key, even-list-key and failure-list-key respectively. Main goal to show main redis stream concepts like:
-  1. Consumer group and processing the message successfully
-  2. Pending messages (if message is not processed or acknowledged) 
-  3. Claiming the messages (if any of the consumer goes down permanently or if the message is not processed does not until specified time) 
+ 1. Publishing message into stream using Redis Stream
+ 2. Processing stream using Consumer Group
+ 3. Pending messages (if message is not processed or acknowledged)
+ 4. Claiming the messages (if any of the consumer goes down permanently or if the message is not processed until specified time) 
 
 ## Guidelines
 Before cloning this repository and running it, please keep your redis server up. We can use gradle plugin to run the boot application.
