@@ -2,11 +2,11 @@
 
 ## Overview
 The follwoing repo shows how to use redis stream for producing and consuming data using consumer group. There are 3 modules in this project as below :
-1. redis-stream-common
+1. redis-stream-common : 
   This module is a library which has coonfiugration details to connect with redis and common files to be used among other modules.
-2. redis-stream-producer
+2. redis-stream-producer : 
   This module is responsible to produce the data using spring data redis libraries.
-3. redis-stream-consumer
+3. redis-stream-consumer : 
   This module is responsible to consume the data. Identifying the pending messages, claiming and acknowleding them.
 
 ## Use Case
